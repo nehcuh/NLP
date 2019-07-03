@@ -1,0 +1,14 @@
+#+TITLE: 目录说明
+
+* Notes
+
+1. 以后的 NLP 课程笔记会记录在 ~notes~ 目录下，包含课程主要内容和代码以及思路
+2. 笔记会加入个人理解与修改，尽量使其完整
+
+* Assignments
+
+1. 在目录 ~assignments~ 下保存每次课堂的作业与解答
+
+* References
+
+1. 包含一些 NLP 相关资料
