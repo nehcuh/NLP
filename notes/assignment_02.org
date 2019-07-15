@@ -1,0 +1,425 @@
+#+TITLE: 第二周作业
+
+
+* 重写房价预测机器学习算法
+
+1. Random Choose Method to get optimal k and b
+2. Supervised Direction to get optimal k and b
+3. Gradient Descent to get optimal k and b
+4. Try different Loss function and learning rate.
+
+** 数据导入与简单可视化
+
+#+BEGIN_QUOTE
+从 ~sklearn.datasets~ 导入 =load_boston= 函数，返回数据结构为 =dict=, 包括 ~'data'~, ~'target'~,
+~'feature_names'~, ~'DESCR'~
+- ~'data'~ : ~numpy.array~ 格式，形状为 (506, 13), 每一列均为相应 ~feature~ 取值
+- ~'target'~ : ~numpy.array~ 格式，形状为 (506,)
+- ~‘feature_names'~ : 对应 ~'data'~ 的每一列 =feature= 列名
+- ~'DESCR'~ : 针对每一类 =feature= 列名的具体描述
+#+END_QUOTE
+
+
+#+BEGIN_SRC python
+from sklearn import datasets
+import matplotlib.pyplot as plt
+from IPython import display
+import random
+import numpy as np
+
+# 数据导入
+dataset = dataset.load_boston()
+
+# 简单可视化，一个比较直觉的感受是，房价与面积成正比，没有看到相应的面积数据，但是有每间屋子的房间数
+# 将横坐标设置为房间数，纵坐标设置为房价
+
+# 图像显示设置
+def use_svg_display():
+    display.set_matplotlib_formats("svg")
+
+def set_figsize(figsize=(3.5, 2.5)):
+    use_svg_display()
+    plt.rcParams['figure.figsize'] = figsize
+
+set_figsize()
+
+plt.scatter(dataset['data'][:, 5], dataset['target'])
+plt.xlabel("Average Room Per Dwelling")
+plt.ylabel("House Price")
+#+END_SRC
+
+** 数据描述与拟合
+
+1. 数据描述
+
+   从散点图，可以看出，房价与房间数，线性相关性比较强，可以尝试用线性拟合去进行房价回归处理，即 $y =
+   kx + b$, 离散值时，可以写为 $y_i = \sum_i (k x_i + b)$
+
+2. 随机拟合
+
+   - 随机在一定数值范围内选择 $k$ 和 $b$, 并通过设定 loss 来选择使得 loss 最小的
+     $k$ 和 $b$ 组合
+
+     #+BEGIN_SRC python
+def price(rm, k, b):
+    return k * rm + b
+
+def loss(y, y_hat):
+    return np.sum((y - y_hat) ** 2)
+
+best_k, best_b = None, None
+min_loss = np.inf
+for i in range(100000):
+    k = random.randint(-100, 100)
+    b = random.randint(-100, 100)
+    price_random_by_k_and_b = price(dataset["data"][:, 5], k, b)
+
+    current_loss = loss(dataset['target'], price_random_by_k_and_b)
+    if current_loss < min_loss:
+        best_k = k
+        best_b = b
+        min_loss = current_loss
+
+    if i % 1000 == 0:
+        print(f"best k and best b is: {best_k} and {best_b} with loss {min_loss:.4f}")
+     #+END_SRC
+
+3. 受监督的迁移方向
+
+   #+BEGIN_SRC python
+direction = [
+    (+1, -1),
+    (+1, +1),
+    (-1, +1),
+    (-1, -1)
+]
+
+next_direction = random.choice(direction)
+
+scalar = 0.1
+
+# 随机选取初始值
+current_k = random.random() * 200 - 100
+current_b = random.random() * 200 - 100
+best_k, best_b = None, None
+min_loss = np.inf
+for i in range(10000):
+    k_direction, b_direction = next_direction
+    current_k, current_b = best_k + k_direction*scalar, b + b_direction*scalar
+    price_by_k_and_p = price(dataset['data'][:, 5], current_k, current_b)
+    current_loss = loss(price, price_by_k_and_p)
+
+    if current_loss < min_loss:
+        min_loss = current_loss
+        best_k, best_b = current_k, current_b
+    else:
+        next_direction = random.choice(direction)
+
+    if i % 1000 == 0:
+        print(f"current min loss {min_loss:.4f} with best_k {best_k} and best_b {best_b}")
+   #+END_SRC
+
+4. 随机梯度下降
+
+   #+BEGIN_QUOTE
+   将参数沿相应的梯度反方向进行更新
+   #+END_QUOTE
+
+* 回答下述问题
+
+1. Why do we need machine learning methods instead of creating a complicated formula?
+
+   It's hard to define function to describe data connection. With data fed, machine learning can
+   automatically generate appropriate functions.
+
+2. Wha't's the disadvantages of the 1st Random Choosen methods in our course?
+
+   - With more training, results can be more accurate while the calculation costs more time.
+   - Results will be different with different random choosen method.
+
+3. Is the 2nd method supervised direction better than 1st one? What's the disadvantages of the 2nd
+   supversied directin method?
+
+   - Good results can be converged with less time.
+   - Definition of directions is decided manully. It could be more complicated when paramters
+     getting more. Direction choosen method is random, which could cost more time.
+
+4. Why do we use Derivative / Gredient to fit a target function?
+
+   - It's a more efficient way to update parameters according to mathematic conclusion.
+
+5. In the words 'Gradient Descent', what's the Gradient and what's the Descent?
+
+   - Gradient: the partial derivative of parameters.
+   - Desecnt: each iteration will update parameter opposite the direction of gradient.
+
+6. What's the advantages of the 3rd gradient descent method compared to the previous methods?
+
+   - With large dataset, the computation may cost more time. Each epoch will calculate partial
+     derivate of each parameters together with loss function.
+
+7. Using the simple words to describe: What's the machine leanring.
+
+   Using computer to automatically find the best function with data fed.
+
+* 地铁线路图与路径规划
+
+** 问题描述
+
+#+BEGIN_QUOTE
+Please using the search policy to implement an agent. This agent recieves two inputs, one is @param
+start station and the other is @param destination. Your agent should give the optimal route based on
+Beijing Subway system.
+#+END_QUOTE
+
+** 问题分析
+
+1. 概略性信息可以在百度百科的北京地铁词条下获取，相应的网址为 [[https://baike.baidu.com/item/][北京地铁]]
+2. 观察 [[https://baike.baidu.com/item/%E5%8C%97%E4%BA%AC%E5%9C%B0%E9%93%81/][北京地铁]] 页面信息，可以看到目前北京所有运行线路，需要 *匹配出所有运行中的线路*
+3. 分别查找相应线路的百科词条，并试图去 *匹配出所有线路的站台信息*
+
+** 问题处理
+
+- [X] 爬取 [[https://baike.baidu.com/item/%E5%8C%97%E4%BA%AC%E5%9C%B0%E9%93%81/][北京地铁]] 页面
+
+  #+BEGIN_SRC python
+import requests
+import re
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def request_url(url:str, headers: dict=None):
+    """
+    爬取 url 网页信息，并返回网页内容
+    :param url: 网址
+    :param headers: 浏览器 headers 信息
+    """
+    try:
+        response = requests.get(url, headers=headers)
+    except:
+        raise ValueError(f"语法错误，无法抓取 {url} 信息")
+    if response.status_code != 200:
+        print(f"抓取错误，无法抓取 {url} 信息")
+    return response.content.decode()
+
+base_url = "https://baike.baidu.com/item/北京地铁"
+headers = headers = {
+    "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"
+    " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36"}
+response = request_url(base_url, headers=headers)
+  #+END_SRC
+
+- [X] 匹配出线路信息
+
+  - 正则匹配：比较难处理，且容易混入其他信息
+
+    #+BEGIN_SRC python
+def reg_search(content: str, reg_exp: str):
+    """
+    TODO: 普通正则匹配很容易混入垃圾信息，比较难处理
+    网页信息正则匹配
+    :param content: 网页信息
+    :param reg_exp: 正则表达式
+    """
+    return re.compile(reg_exp).findall(content)
+    #+END_SRC
+  - 利用 ~pandas~ 对页面中表格信息进行抽取
+
+    #+BEGIN_SRC python
+# 观察发现，页面第二个表格中有运营中线路信息
+# 直接利用该表格中相应线路信息
+# 表格最后一行不需要，直接剔除
+# 由于北京地铁 14 号线分东段和西段，但是百度词条直接是一条，这里先作为一条线路，之后在分开处理
+metro_lines = list(set([re.findall(r"(\w+线)", line)[0]
+                        for line in pd.read_html(response)[1]['线路名称'].tolist()[:-1]]))
+    #+END_SRC
+
+- [X] 分别爬取相应线路百度词条并处理得到相应站台信息
+
+  - 对所有线路所有车站信息进行处理
+
+    #+BEGIN_SRC python
+page_info = []
+dict_metro_line_stations = dict()
+for metro_line in metro_lines:
+    dict_metro_line_stations[metro_line] = []
+for metro_line in metro_lines:
+    response = request_url(base_url+metro_line, headers=headers)
+    # 对爬取网页进行缓存，避免重复抓取
+    page_info.append(response)
+    # 不同线路的百度词条，可能包括多个表都含有车站信息
+    # 经过观察，这里采用第一个遇到的包含车站信息的表格中车站信息
+    tables = pd.read_html(response)
+    for table in tables:
+        try:
+            stations = table['车站名称'].tolist()
+            # 从表格中抽取到的信息有些会混入垃圾信息，利用正则匹配过滤
+            for item in stations:
+                station = re.findall(r"(\w+?站)", item.split(' ')[0])
+                if station:
+                    dict_metro_line_stations[metro_line].append(station[0])
+            break
+        except:
+            continue
+  #+END_SRC
+  - 对 14 号线单独处理，分为东段和西段
+
+    #+BEGIN_SRC python
+dict_metro_line_stations['14号线 (西段)'] = dict_metro_line_stations['14号线'][:7]
+dict_metro_line_stations['14号线 (东段)'] = dict_metro_line_stations['14号线'][7:]
+dict_metro_line_stations.pop("14号线")
+    #+END_SRC
+
+- [X] 构造网络拓扑结构
+
+  1. [X] DONE: 地铁线路有的是环线，有的是折线，需要分开考虑 --> 比对首尾两站是否相同，相同则是环线
+  2. [X] DONE: 爬出的地铁线路，第一、第二站会有重复，需要额外剔除
+  3. [X] DONE: 连接不同站台的线路，额外保存一个数据结构，方便查询乘坐线路
+
+     #+BEGIN_SRC python
+flag_cycle = False
+# 判断车站之间的联系
+dict_station_relations = dict()
+for metro_line in dict_metro_line_stations:
+    stations = dict_metro_line_stations[metro_line]
+    if stations[0] == stations[-1]:
+        # 判断是否环线
+        flag_cycle = True
+    if stations[0] == stations[1]:
+        # 判断是否有重复
+        dict_metro_line_stations[metro_line].pop(0)
+    if flag_cycle:
+        # 环线的话，最后一站就是起始站
+        dict_metro_line_stations[metro_line].pop(-1)
+        stations = dict_metro_line_stations[metro_line]
+        for i in range(len(stations)-1):
+            if stations[i] not in dict_station_relations:
+                dict_station_relations[stations[i]] = [(metro_line, stations[i-1]), (metro_line, stations[i+1])]
+            else:
+                dict_station_relations[stations[i]] += [(metro_line, stations[i-1]), (metro_line, stations[i+1])]
+        # 最后一站单独处理
+        if stations[-1] not in dict_station_relations:
+            dict_station_relations[stations[-1]] = [(metro_line, stations[-2]), (metro_line, stations[0])]
+        else:
+            dict_station_relations[stations[-1]] += [(metro_line, stations[-2]), (metro_line, stations[0])]
+        # 线路关系构建完毕，环线标志重置
+        flag_cycle = False
+    else:
+        stations = dict_metro_line_stations[metro_line]
+        for i in range(len(stations)):
+            if i == 0:
+                if stations[i] not in dict_station_relations:
+                    dict_station_relations[stations[i]] = [(metro_line, stations[i+1])]
+                else:
+                    dict_station_relations[stations[i]] += [(metro_line, stations[i+1])]
+            elif i == len(stations) - 1:
+                if stations[i] not in dict_station_relations:
+                    dict_station_relations[stations[i]] = [(metro_line, stations[i-1])]
+                else:
+                    dict_station_relations[stations[i]] += [(metro_line, stations[i-1])]
+            else:
+                if stations[i] not in dict_station_relations:
+                    dict_station_relations[stations[i]] = [(metro_line, stations[i-1]), (metro_line, stations[i+1])]
+                else:
+                    dict_station_relations[stations[i]] += [(metro_line, stations[i-1]), (metro_line, stations[i+1])]
+     #+END_SRC
+
+- [X] 可视化
+
+  #+BEGIN_SRC python
+# 没有爬到地铁站的经纬度信息，直接作图
+stations_graph = nx.Graph()
+for key in dict_station_relations:
+    for value in dict_station_relations[key]:
+        stations_graphs.add_edge(key, value[1])
+nx.draw(stations_graph, edge_color='b', node_color='g', with_label=True, node_size=20)
+  #+END_SRC
+
+- [X] 搜索路径: 深度优先或广度优先
+
+  #+BEGIN_SRC python
+def bfs(graph: dict, start: str, search_policy="breath"):
+    """
+    搜索策略，返回当前结点下一层级或当前结果所在分支的所有结点
+    :param graph: 树结构
+    :param start: 起始点
+    :param search_policy: breath (广度优先) 或者 depth (深度优先)
+    """
+    visited = [start] # 访问过的点
+    seen = set() # 搜索过的点
+
+    while visited:
+        frontier = visited.pop()
+
+        if frontier in seen:
+            # 如果已经观测过，跳过
+            continue
+
+        for successor in graph[frontier]:
+            if successor[1] in seen:
+                continue
+            if search_policy == 'breath':
+                visited = [successor[1]] + visited
+            elif search_poliy == "depth":
+                visited = visited + [successor[1]]
+            else:
+                raise ValueError("搜索参数设置有误，输入 breath (深度优先) 或 depth (广度优先)")
+        seen.add(frontier)
+    return seen
+  #+END_SRC
+
+- [X] 搜索算法
+
+  1. 为了方便回溯搜索路径，维护一个列表，保存搜索路径
+
+  2. 为了避免出现重复搜索，维护一个 set，已经搜索过子结点的结点放入 set
+
+  3. 增加 ~sort_candidate~ 函数，方便对搜索路径进行排序
+
+  4. TODO: 如何处理根据换乘线路次数进行排序
+
+        #+BEGIN_SRC python
+   def search(start: str, end: str, graph: dict):
+       """
+       根据 graph，根据 sort_candidate 排序方法，返回从 start 到 end 之间的路径
+       :param start: 起始点
+       :param end: 目的地
+       :param graph: 图模型
+       :param sort_candidate: 排序函数
+       """
+       pathes = [[(None, start)]] # 保存搜索路径，其实搜索路径为起始点
+       visited = set() # 维护已经访问过子结点的结点
+
+       while pathes:
+           path = pathes.pop(0) # 取出相应路径序列
+           frontier = path[-1] # 准备访问路径序列最新的一点的子结点
+
+           if frontier in visited: continue # 已经访问过的结点，略过
+
+           successors = graph[frontier] # 从图模型中取出相应结点的子结点
+
+           for successor in successors:
+               if successor in path: continue # 如果子结点已经出现在之前路径中，略过
+               new_path = path + [successor[1]] # 产生新的路径
+               pathes.append(new_path)
+               if successor[1] == end: return new_path
+           visited.add(frontier)
+           # 如果没有找到相应路径
+       return []
+
+
+  def transfer_stations_first(pathes: list):
+      """
+      尽量少换乘车站
+      :param pathes: 路径
+      """
+      return sorted(pathes, key=len)
+
+  def transfer_as_much_possible(pathes: list):
+      """
+      尽量多换乘车站
+      """
+      return sorted(pathes, key=len, reverse=True)
+        #+END_SRC
